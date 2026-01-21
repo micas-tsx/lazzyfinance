@@ -117,12 +117,17 @@ npm start
 
 1. Abra o Telegram e procure pelo seu bot
 2. Envie `/start` para ver as instruções
-3. Para registrar um gasto, envie uma mensagem como:
-   - `50 reais no mercado`
-   - `100 reais de uber hoje`
-   - `200 reais de aluguel em 01/01/2025`
+3. Para registrar um gasto ou lucro, envie uma mensagem como:
+   - `gasto 50 reais no mercado`
+   - `gastei 100 reais de uber hoje`
+   - `gastei 200 reais de aluguel em 01/01/2025`
+   - `ganhei 150 de um freela ontem`
+   - `lucrei 130 fazendo um uber`
 4. O bot irá categorizar e pedir confirmação
 5. Use `/relatorio agosto` para ver o relatório do mês
+6. Use `/exportar` para criar um arquivo .xlsx dos gastos
+7. função futura: `/site` acessa as informações em um site
+   
 
 ## 🏗️ Estrutura do projeto
 
@@ -142,30 +147,6 @@ src/
 │   └── dateParser.ts   # Utilitários de data
 └── index.ts            # Ponto de entrada
 ```
-
-## 🌐 Hospedagem
-
-### Opções recomendadas (gratuitas/fáceis):
-
-1. **Railway** (recomendado para iniciantes)
-   - Conecta direto ao GitHub
-   - PostgreSQL incluso
-   - Deploy automático
-   - [https://railway.app](https://railway.app)
-
-2. **Render**
-   - Gratuito com limitações
-   - PostgreSQL incluso
-   - [https://render.com](https://render.com)
-
-3. **Fly.io**
-   - Boa opção para apps com containers
-   - [https://fly.io](https://fly.io)
-
-**Nota importante**: Se hospedar na nuvem, você precisará de uma solução para o Ollama, pois ele precisa rodar em um servidor. Alternativas:
-- Usar um modelo de IA remoto (Google Gemini API - gratuito com limite)
-- Hospedar Ollama em um VPS separado
-- Usar serviços como Together.ai ou Replicate
 
 ## 🔍 Scripts disponíveis
 
@@ -208,7 +189,3 @@ Verifique se o PostgreSQL está rodando e se as credenciais no `.env.local` est�
 1. Verifique se o token do Telegram está correto
 2. Confira os logs no console
 3. Verifique se o bot foi iniciado corretamente com `/start`
-
-## 📄 Licença
-
-MIT
