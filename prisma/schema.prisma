@@ -1,0 +1,68 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Categoria {
+  TRANSPORTE
+  LAZER
+  SAUDE
+  MORADIA
+  ESTUDOS
+  LUCROS
+}
+
+model User {
+  id           String        @id @default(uuid())
+  telegramId   BigInt        @unique @map("telegram_id")
+  firstName    String?       @map("first_name")
+  lastName     String?       @map("last_name")
+  username     String?       @unique
+  languageCode String?       @map("language_code")
+  criadoEm     DateTime      @default(now()) @map("criado_em")
+  atualizadoEm DateTime      @updatedAt @map("atualizado_em")
+  transactions Transaction[]
+  accessTokens AccessToken[]
+
+  @@map("users")
+}
+
+model Transaction {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  valor        Decimal   @db.Decimal(10, 2)
+  descricao    String
+  categoria    Categoria
+  dataGasto    DateTime  @map("data_gasto")
+  nota         String?
+  criadoEm     DateTime  @default(now()) @map("criado_em")
+  atualizadoEm DateTime  @updatedAt @map("atualizado_em")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, dataGasto])
+  @@map("transactions")
+}
+
+model AccessToken {
+  id       String    @id @default(uuid())
+  userId   String    @map("user_id")
+  token    String    @unique
+  expiraEm DateTime  @map("expira_em")
+  criadoEm DateTime  @default(now()) @map("criado_em")
+  usadoEm  DateTime? @map("usado_em")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("access_tokens")
+}
