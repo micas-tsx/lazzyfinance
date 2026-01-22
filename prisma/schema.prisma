@@ -11,11 +11,13 @@ datasource db {
 }
 
 enum Categoria {
+  ALIMENTACAO
   TRANSPORTE
   LAZER
   SAUDE
   MORADIA
   ESTUDOS
+  TRABALHO
   LUCROS
 }
 

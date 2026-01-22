@@ -20,11 +20,14 @@ export async function categorizarGasto(descricao: string): Promise<GastoCategori
 
 Descrição: "${descricao}"
 
-Categorias disponíveis: TRANSPORTE, LAZER, SAUDE, MORADIA, ESTUDOS, LUCROS
+Categorias disponíveis: ALIMENTACAO, TRANSPORTE, LAZER, SAUDE, MORADIA, ESTUDOS, TRABALHO, LUCROS
 
 IMPORTANTE: 
 - Se a descrição indicar que é um GANHO/RECEITA (ex: "recebi", "ganhei", "salário", "venda", "pagamento recebido"), use a categoria LUCROS
 - Se for um GASTO/DESPESA, use uma das outras categorias conforme o contexto
+- ALIMENTACAO: comida, restaurante, mercado, compras de alimentos
+- TRABALHO: despesas de trabalho, materiais, equipamentos
+- Use LUCROS apenas para receitas/ganhos
 
 Extraia da descrição:
 1. O valor numérico (se houver)
@@ -84,7 +87,7 @@ Se não conseguir extrair o valor, use 0. Se não tiver certeza da categoria, us
     resultado.categoria = resultado.categoria.toUpperCase();
 
     // Valida se a categoria é uma das permitidas
-    const categoriasValidas = ['TRANSPORTE', 'LAZER', 'SAUDE', 'MORADIA', 'ESTUDOS', 'LUCROS'];
+    const categoriasValidas = ['ALIMENTACAO', 'TRANSPORTE', 'LAZER', 'SAUDE', 'MORADIA', 'ESTUDOS', 'TRABALHO', 'LUCROS'];
     if (!categoriasValidas.includes(resultado.categoria)) {
       // Se não for válida, tenta inferir
       resultado.categoria = inferirCategoria(resultado.descricao);
@@ -123,6 +126,13 @@ function inferirCategoria(descricao: string): string {
     freela: 'LUCROS',
     freelance: 'LUCROS',
     'paguei': 'TRANSPORTE', // "paguei uber" é transporte, não lucro
+    // Alimentação
+    alimentacao: 'ALIMENTACAO',
+    comida: 'ALIMENTACAO',
+    mercado: 'ALIMENTACAO',
+    restaurante: 'ALIMENTACAO',
+    padaria: 'ALIMENTACAO',
+    supermercado: 'ALIMENTACAO',
     // Transporte
     transporte: 'TRANSPORTE',
     uber: 'TRANSPORTE',
@@ -135,7 +145,6 @@ function inferirCategoria(descricao: string): string {
     // Lazer
     lazer: 'LAZER',
     cinema: 'LAZER',
-    restaurante: 'LAZER',
     bar: 'LAZER',
     festa: 'LAZER',
     // Saúde
@@ -159,6 +168,11 @@ function inferirCategoria(descricao: string): string {
     curso: 'ESTUDOS',
     livro: 'ESTUDOS',
     escola: 'ESTUDOS',
+    // Trabalho
+    trabalho: 'TRABALHO',
+    material: 'TRABALHO',
+    equipamento: 'TRABALHO',
+    software: 'TRABALHO',
   };
 
   for (const [keyword, categoria] of Object.entries(keywords)) {

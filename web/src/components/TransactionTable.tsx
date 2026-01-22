@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import { type Transaction } from '../types';
-import { Book, Car, ChevronRight, Home, Medal, PartyPopper, TrendingUp, Wallet } from 'lucide-react';
+import { Book, Car, ChevronRight, Home, Medal, PartyPopper, TrendingUp, Wallet, Utensils, Briefcase } from 'lucide-react';
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -11,11 +11,13 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
 
   const getIcon = (categoria: string) => {
     const emojis: Record<string, ReactElement> = {
+      ALIMENTACAO: <Utensils className="w-5 h-5" />,
       TRANSPORTE: <Car className="w-5 h-5" />,
       LAZER: <PartyPopper className="w-5 h-5" />,
       SAUDE: <Medal className="w-5 h-5" />,
       MORADIA: <Home className="w-5 h-5" />,
       ESTUDOS: <Book className="w-5 h-5" />,
+      TRABALHO: <Briefcase className="w-5 h-5" />,
       LUCROS: <TrendingUp className="w-5 h-5" />
     };
     return emojis[categoria] || <Wallet className="w-5 h-5" />;
