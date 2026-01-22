@@ -9,8 +9,9 @@ import {
   Tooltip,
   Legend,
   Filler,
+  type ChartOptions,
+  type TooltipItem,
 } from 'chart.js';
-import { type Transaction } from '../types';
 
 ChartJS.register(
   CategoryScale,
@@ -23,38 +24,66 @@ ChartJS.register(
   Filler
 );
 
+interface Transaction {
+  dataGasto: string | Date;
+  valor: number;
+  categoria: string;
+}
+
+interface TransactionsByDate {
+  [key: string]: {
+    ganhos: number;
+    gastos: number;
+  };
+}
+
 interface LineChartProps {
   transactions: Transaction[];
 }
 
-export function LineChart({ transactions }: LineChartProps) {
-  console.log('[LineChart] Renderizando gráfico de linha com', transactions.length, 'transações');
+export function LineChart({ transactions = [] }: LineChartProps) {
+  // Validação de dados
+  if (!transactions || transactions.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-slate-400">
+        Nenhuma transação para exibir
+      </div>
+    );
+  }
 
   // Agrupa transações por data
-  const transactionsByDate = transactions.reduce((acc, transaction) => {
+  const transactionsByDate = transactions.reduce<TransactionsByDate>((acc, transaction) => {
+    if (!transaction.dataGasto) return acc;
+    
     const date = new Date(transaction.dataGasto).toLocaleDateString('pt-BR');
     if (!acc[date]) {
       acc[date] = { ganhos: 0, gastos: 0 };
     }
     if (transaction.categoria === 'LUCROS') {
-      acc[date].ganhos += transaction.valor;
+      acc[date].ganhos += transaction.valor || 0;
     } else {
-      acc[date].gastos += transaction.valor;
+      acc[date].gastos += transaction.valor || 0;
     }
     return acc;
-  }, {} as Record<string, { ganhos: number; gastos: number }>);
+  }, {});
 
   const dates = Object.keys(transactionsByDate).sort((a, b) => {
-    return new Date(a.split('/').reverse().join('-')).getTime() - 
-           new Date(b.split('/').reverse().join('-')).getTime();
+    const [dayA, monthA, yearA] = a.split('/');
+    const [dayB, monthB, yearB] = b.split('/');
+    return new Date(Number(yearA), Number(monthA) - 1, Number(dayA)).getTime() - 
+           new Date(Number(yearB), Number(monthB) - 1, Number(dayB)).getTime();
   });
 
   const ganhosData = dates.map(date => transactionsByDate[date].ganhos);
   const gastosData = dates.map(date => transactionsByDate[date].gastos);
 
-  const isDark = document.documentElement.classList.contains('dark');
-  const textColor = isDark ? '#e5e7eb' : '#1f2937';
-  const gridColor = isDark ? '#374151' : '#e5e7eb';
+  // Cores do Tema LazzyFinance
+  const colors = {
+    ganhos: '#10b981',
+    gastos: '#f43f5e',
+    grid: 'rgba(255, 255, 255, 0.05)',
+    text: '#94a3b8'
+  };
 
   const data = {
     labels: dates,
@@ -62,74 +91,91 @@ export function LineChart({ transactions }: LineChartProps) {
       {
         label: 'Ganhos',
         data: ganhosData,
-        borderColor: 'rgb(34, 197, 94)',
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        borderColor: colors.ganhos,
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
         fill: true,
         tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: colors.ganhos,
+        borderWidth: 3,
       },
       {
         label: 'Gastos',
-        data: gastosData.map(v => -v), // Negativo para mostrar abaixo do zero
-        borderColor: 'rgb(239, 68, 68)',
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        data: gastosData.map(v => -v),
+        borderColor: colors.gastos,
+        backgroundColor: 'rgba(244, 63, 94, 0.1)',
         fill: true,
         tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: colors.gastos,
+        borderWidth: 3,
       },
     ],
   };
 
-  const options = {
+  const options: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
     plugins: {
       legend: {
-        position: 'top' as const,
-        labels: {
-          color: textColor,
-        },
-      },
-      title: {
         display: true,
-        text: 'Evolução Temporal de Ganhos e Gastos',
-        color: textColor,
-        font: {
-          size: 16,
+        position: 'top' as const,
+        align: 'end' as const,
+        labels: {
+          color: colors.text,
+          boxWidth: 12,
+          font: { size: 11, weight: 'bold' as const },
+          usePointStyle: true,
+          padding: 15,
         },
       },
+      title: { display: false },
       tooltip: {
+        backgroundColor: '#0f172a',
+        titleColor: '#f8fafc',
+        bodyColor: '#cbd5e1',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        padding: 12,
+        cornerRadius: 8,
+        displayColors: true,
         callbacks: {
-          label: function(context: any) {
-            const value = Math.abs(context.parsed.y);
-            return `${context.dataset.label}: R$ ${value.toFixed(2)}`;
+          label: function(context: TooltipItem<'line'>) {
+            const value = Math.abs(context.parsed.y || 0);
+            return `${context.dataset.label}: R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
           },
         },
       },
     },
     scales: {
       x: {
-        ticks: {
-          color: textColor,
+        ticks: { 
+          color: colors.text, 
+          font: { size: 10 },
+          maxRotation: 45,
+          minRotation: 0,
         },
-        grid: {
-          color: gridColor,
-        },
+        grid: { display: false },
+        border: { display: false }
       },
       y: {
         ticks: {
-          color: textColor,
-          callback: function(value: any) {
-            return 'R$ ' + Math.abs(value).toFixed(0);
-          },
+          color: colors.text,
+          font: { size: 10 },
+          callback: (value) => 'R$ ' + Math.abs(Number(value)).toFixed(0),
         },
-        grid: {
-          color: gridColor,
-        },
+        grid: { color: colors.grid },
+        border: { display: false }
       },
     },
   };
 
   return (
-    <div className="w-full h-96 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+    <div className="w-full h-full">
       <Line data={data} options={options} />
     </div>
   );

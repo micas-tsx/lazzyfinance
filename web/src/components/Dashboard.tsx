@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { type Transaction, type Stats } from '../types';
-import { LineChart } from './LineChart';
+import { LineChart }  from './LineChart';
 import { PieChart } from './PieChart';
 import { TransactionTable } from './TransactionTable';
 import { MonthFilter } from './MonthFilter';
-import { useTheme } from '../hooks/useTheme';
+import { Sparkles, TrendingUp, Wallet } from 'lucide-react';
 
 export function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -15,7 +15,6 @@ export function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const [ano, setAno] = useState(new Date().getFullYear());
-  const { theme, toggleTheme } = useTheme();
 
   console.log('[Dashboard] Componente montado');
 
@@ -33,14 +32,14 @@ export function Dashboard() {
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('[Dashboard] Validando token...');
       await apiService.validateToken();
-      
+
       console.log('[Dashboard] Buscando todas as transações...');
       const allData = await apiService.getAllTransactions();
       setAllTransactions(allData.transacoes);
-      
+
       console.log('[Dashboard] Buscando dados do mês...');
       await loadMonthData();
     } catch (err: any) {
@@ -58,7 +57,7 @@ export function Dashboard() {
         apiService.getTransactions(mes, ano),
         apiService.getStats(mes, ano),
       ]);
-      
+
       setMonthTransactions(transactionsData.transacoes);
       setStats(statsData);
       console.log('[Dashboard] Dados do mês carregados:', {
@@ -117,86 +116,69 @@ export function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen bg-[#020617] text-slate-200 font-sans p-4 md:p-10 selection:bg-indigo-500/30">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/10 blur-[150px] rounded-full"></div>
+        <div className="absolute bottom-[20%] right-[-5%] w-[30%] h-[30%] bg-purple-500/10 blur-[120px] rounded-full"></div>
+      </div>
+
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            📊 LazzyFinance Dashboard
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b border-white/5 pb-10">
+        <div className="space-y-1">
+          <h1 className="text-4xl font-black bg-linear-to-r from-white via-white to-slate-500 bg-clip-text text-transparent">
+            Lazzy<span className="text-indigo-500">Finance</span>
           </h1>
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-4">
+          <MonthFilter mes={mes} ano={ano} onMesChange={setMes} onAnoChange={setAno} />
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total de Ganhos</p>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(stats.totalGanhos)}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                  {stats.quantidadeGanhos} transação(ões)
-                </p>
-              </div>
-              <div className="text-4xl">💰</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <div className="p-8 rounded-4xl bg-slate-900/40 border border-white/5 backdrop-blur-xl group hover:border-indigo-500/40 transition-all">
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Patrimônio Líquido</span>
+              <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400"><Wallet className="w-4 h-4" /></div>
+            </div>
+            <h2 className="text-3xl font-black text-white">{formatCurrency(stats.saldoLiquido)}</h2>
+          </div>
+
+          <div className="p-8 rounded-4xl bg-slate-900/40 border border-white/5 backdrop-blur-xl">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-4">Entradas</span>
+            <h2 className="text-3xl font-black text-emerald-400">{formatCurrency(stats.totalGanhos)}</h2>
+            <div className="h-1.5 w-full bg-slate-800 rounded-full mt-6 overflow-hidden">
+              <div className={`h-full bg-emerald-500 w-70%`} />
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total de Gastos</p>
-                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                  {formatCurrency(stats.totalGastos)}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                  {stats.quantidadeGastos} transação(ões)
-                </p>
-              </div>
-              <div className="text-4xl">💸</div>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Saldo Líquido</p>
-                <p
-                  className={`text-2xl font-bold ${
-                    stats.saldoLiquido >= 0
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-red-600 dark:text-red-400'
-                  }`}
-                >
-                  {formatCurrency(stats.saldoLiquido)}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                  {stats.quantidadeTransacoes} transação(ões)
-                </p>
-              </div>
-              <div className="text-4xl">
-                {stats.saldoLiquido >= 0 ? '✅' : '⚠️'}
-              </div>
+
+          <div className="p-8 rounded-4xl bg-slate-900/40 border border-white/5 backdrop-blur-xl">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-4">Saídas</span>
+            <h2 className="text-3xl font-black text-rose-400">{formatCurrency(stats.totalGastos)}</h2>
+            <div className="h-1.5 w-full bg-slate-800 rounded-full mt-6 overflow-hidden">
+              <div className={`h-full bg-rose-500 w-70%`} />
             </div>
           </div>
         </div>
 
-        {/* Month Filter */}
-        <MonthFilter mes={mes} ano={ano} onMesChange={setMes} onAnoChange={setAno} />
-
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <LineChart transactions={allTransactions} />
-          <PieChart stats={stats} />
+          <div className="md:col-span-3 p-8 rounded-4xl bg-slate-900/40 border border-white/5 h-100">
+            <h3 className="text-sm font-bold text-slate-400 uppercase mb-6 flex items-center gap-2"><TrendingUp className="w-4 h-4" /> Evolução do Caixa</h3>
+            <div className="h-70">
+              <LineChart transactions={allTransactions} />
+            </div>
+          </div>
+
+          <div className="md:col-span-2 p-8 rounded-4xl bg-slate-900/40 border border-white/5 h-100">
+            <h3 className="text-sm font-bold text-slate-400 uppercase mb-6 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Distribuição</h3>
+            <div className="h-70">
+              <PieChart stats={stats} />
+            </div>
+          </div>
         </div>
 
         {/* Transactions Table */}

@@ -4,6 +4,7 @@ import {
   ArcElement,
   Tooltip,
   Legend,
+  type ChartOptions
 } from 'chart.js';
 import { type Stats } from '../types';
 
@@ -16,7 +17,6 @@ interface PieChartProps {
 export function PieChart({ stats }: PieChartProps) {
   console.log('[PieChart] Renderizando gráfico de pizza com stats:', stats);
 
-  // Filtra apenas categorias de gastos (não LUCROS)
   const gastosPorCategoria = stats.resumoPorCategoria.filter(
     (item) => item.categoria !== 'LUCROS'
   );
@@ -24,74 +24,64 @@ export function PieChart({ stats }: PieChartProps) {
   const labels = gastosPorCategoria.map((item) => item.categoria);
   const values = gastosPorCategoria.map((item) => item.total);
 
-  const isDark = document.documentElement.classList.contains('dark');
-  const textColor = isDark ? '#e5e7eb' : '#1f2937';
-
-  const colors = [
-    'rgb(239, 68, 68)',   // Vermelho - TRANSPORTE
-    'rgb(59, 130, 246)',  // Azul - LAZER
-    'rgb(34, 197, 94)',   // Verde - SAUDE
-    'rgb(251, 146, 60)',  // Laranja - MORADIA
-    'rgb(168, 85, 247)',  // Roxo - ESTUDOS
-  ];
+  const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#06b6d4'];
 
   const data = {
     labels,
     datasets: [
       {
         data: values,
-        backgroundColor: colors.slice(0, labels.length),
-        borderColor: isDark ? '#374151' : '#ffffff',
-        borderWidth: 2,
+        backgroundColor: colors,
+        borderColor: '#0f172a', 
+        borderWidth: 4,
+        hoverOffset: 20,
       },
     ],
   };
 
-  const options = {
+  const options: ChartOptions<'pie'> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'right' as const,
         labels: {
-          color: textColor,
-          padding: 15,
-        },
-      },
-      title: {
-        display: true,
-        text: `Gastos por Categoria - ${stats.mes}/${stats.ano}`,
-        color: textColor,
-        font: {
-          size: 16,
+          color: '#94a3b8',
+          padding: 20,
+          usePointStyle: true,
+          font: { size: 12, weight: 'bold' }
         },
       },
       tooltip: {
+        backgroundColor: '#0f172a',
+        padding: 12,
+        cornerRadius: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
         callbacks: {
           label: function(context: any) {
             const label = context.label || '';
             const value = context.parsed || 0;
             const total = values.reduce((a, b) => a + b, 0);
             const percentage = ((value / total) * 100).toFixed(1);
-            return `${label}: R$ ${value.toFixed(2)} (${percentage}%)`;
+            return ` ${label}: R$ ${value.toFixed(2)} (${percentage}%)`;
           },
         },
       },
     },
+    cutout: '65%', 
   };
 
   if (gastosPorCategoria.length === 0) {
     return (
-      <div className="w-full h-96 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg flex items-center justify-center">
-        <p className="text-gray-500 dark:text-gray-400">
-          Nenhum gasto encontrado para este período
-        </p>
+      <div className="w-full h-full flex items-center justify-center">
+        <p className="text-slate-500 italic text-sm text-center">Nenhum gasto encontrado</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-96 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+    <div className="w-full h-full p-2">
       <Pie data={data} options={options} />
     </div>
   );
