@@ -207,6 +207,8 @@ export function Dashboard() {
           <TransactionTable transactions={monthTransactions} />
         </div>
       </main>
+
+      <div>teste</div>
     </div>
   );
 }
