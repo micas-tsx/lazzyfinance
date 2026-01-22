@@ -77,6 +77,10 @@ export function Dashboard() {
     }).format(value);
   };
 
+  const baseFluxo = Math.max(stats?.totalGanhos ?? 0, 0) + Math.max(stats?.totalGastos ?? 0, 0);
+  const ganhoPercent = baseFluxo > 0 ? Math.min(100, (stats?.totalGanhos ?? 0) / baseFluxo * 100) : 0;
+  const gastoPercent = baseFluxo > 0 ? Math.min(100, (stats?.totalGastos ?? 0) / baseFluxo * 100) : 0;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -151,7 +155,10 @@ export function Dashboard() {
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-4">Entradas</span>
             <h2 className="text-3xl font-black text-emerald-400">{formatCurrency(stats.totalGanhos)}</h2>
             <div className="h-1.5 w-full bg-slate-800 rounded-full mt-6 overflow-hidden">
-              <div className={`h-full bg-emerald-500 w-70%`} />
+              <div
+                className="h-full bg-emerald-500 transition-all duration-500"
+                style={{ width: `${ganhoPercent}%` }}
+              />
             </div>
           </div>
 
@@ -159,23 +166,26 @@ export function Dashboard() {
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-4">Saídas</span>
             <h2 className="text-3xl font-black text-rose-400">{formatCurrency(stats.totalGastos)}</h2>
             <div className="h-1.5 w-full bg-slate-800 rounded-full mt-6 overflow-hidden">
-              <div className={`h-full bg-rose-500 w-70%`} />
+              <div
+                className="h-full bg-rose-500 transition-all duration-500"
+                style={{ width: `${gastoPercent}%` }}
+              />
             </div>
           </div>
         </div>
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="md:col-span-3 p-8 rounded-4xl bg-slate-900/40 border border-white/5 h-100">
+          <div className="p-8 rounded-4xl bg-slate-900/40 border border-white/5 h-[360px]">
             <h3 className="text-sm font-bold text-slate-400 uppercase mb-6 flex items-center gap-2"><TrendingUp className="w-4 h-4" /> Evolução do Caixa</h3>
-            <div className="h-70">
+            <div className="h-[280px]">
               <LineChart transactions={allTransactions} />
             </div>
           </div>
 
-          <div className="md:col-span-2 p-8 rounded-4xl bg-slate-900/40 border border-white/5 h-100">
+          <div className="p-8 rounded-4xl bg-slate-900/40 border border-white/5 h-[360px]">
             <h3 className="text-sm font-bold text-slate-400 uppercase mb-6 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Distribuição</h3>
-            <div className="h-70">
+            <div className="h-[280px]">
               <PieChart stats={stats} />
             </div>
           </div>
