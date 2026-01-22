@@ -176,16 +176,16 @@ export function Dashboard() {
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="p-8 rounded-4xl bg-slate-900/40 border border-white/5 h-[360px]">
+          <div className="p-8 rounded-4xl bg-slate-900/40 border border-white/5 h-90">
             <h3 className="text-sm font-bold text-slate-400 uppercase mb-6 flex items-center gap-2"><TrendingUp className="w-4 h-4" /> Evolução do Caixa</h3>
-            <div className="h-[280px]">
+            <div className="h-70">
               <LineChart transactions={allTransactions} />
             </div>
           </div>
 
-          <div className="p-8 rounded-4xl bg-slate-900/40 border border-white/5 h-[360px]">
+          <div className="p-8 rounded-4xl bg-slate-900/40 border border-white/5 h-90">
             <h3 className="text-sm font-bold text-slate-400 uppercase mb-6 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Distribuição</h3>
-            <div className="h-[280px]">
+            <div className="h-70">
               <PieChart stats={stats} />
             </div>
           </div>
