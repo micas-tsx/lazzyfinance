@@ -91,6 +91,32 @@ class ApiService {
     const query = params.toString();
     return this.request(`/api/stats${query ? `?${query}` : ''}`);
   }
+
+  async updateTransaction(id: string, dados: {
+    valor?: number;
+    categoria?: string;
+    descricao?: string;
+    dataGasto?: string;
+    nota?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    console.log(`[API] Atualizando transação ${id}...`);
+    return this.request(`/api/transactions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  async deleteTransaction(id: string): Promise<{ success: boolean; message: string }> {
+    console.log(`[API] Deletando transação ${id}...`);
+    return this.request(`/api/transactions/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getRecurringTransactions(): Promise<{ gastosFixos: any[]; total: number }> {
+    console.log('[API] Buscando gastos fixos...');
+    return this.request('/api/recurring');
+  }
 }
 
 export const apiService = new ApiService();

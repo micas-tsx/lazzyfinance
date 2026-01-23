@@ -1,10 +1,23 @@
 import { Context } from 'telegraf';
 import { categorizarGasto } from '../services/ollama.service';
-import { criarTransacao, gerarRelatorioMensal } from '../services/transaction.service';
+import { 
+  criarTransacao, 
+  gerarRelatorioMensal, 
+  buscarUltimasTransacoes,
+  atualizarTransacao,
+  buscarTransacaoPorId 
+} from '../services/transaction.service';
 import { criarOuObterUsuario, obterUsuarioPorTelegramId } from '../services/user.service';
 import { parseData, formatarData, formatarMoeda, parseMes } from '../utils/dateParser';
 import { gerarExcelTransacoes } from '../services/export.service';
 import { obterOuGerarToken } from '../services/token.service';
+import {
+  criarGastoFixo,
+  listarGastosFixos,
+  atualizarGastoFixo,
+  desativarGastoFixo,
+  buscarGastoFixoPorId
+} from '../services/recurring.service';
 import { env } from '../config/env';
 import * as fs from 'fs';
 
@@ -18,13 +31,40 @@ interface ConfirmacaoPendente {
   nota?: string;
 }
 
+// Estado para criar gastos fixos
+interface GastoFixoPendente {
+  userId: string; // ID interno do usuário no banco
+  valor: number;
+  categoria: string;
+  descricao: string;
+  nota?: string;
+  aguardandoDia: boolean;
+}
+
+// Estado para editar transações
+interface EdicaoPendente {
+  userId: string;
+  transacaoId: string;
+  aguardandoCampo: 'campo' | 'valor' | 'categoria' | 'descricao' | 'data' | 'nota' | null;
+  campoEscolhido?: string;
+}
+
 const confirmacoesPendentes = new Map<number, ConfirmacaoPendente>(); // Key: Telegram ID
+const gastosFixosPendentes = new Map<number, GastoFixoPendente>();
+const edicoesPendentes = new Map<number, EdicaoPendente>();
 
 /**
  * Verifica se há confirmação pendente para um usuário
  */
 export function temConfirmacaoPendente(userId: number): boolean {
   return confirmacoesPendentes.has(userId);
+}
+
+/**
+ * Verifica se há gasto fixo pendente para um usuário
+ */
+export function temGastoFixoPendente(userId: number): boolean {
+  return gastosFixosPendentes.has(userId);
 }
 
 /**
@@ -103,20 +143,23 @@ export async function handleStart(ctx: Context) {
 
     await ctx.reply(
       `👋 Olá, ${nomeUsuario}! Eu sou o LazzyFinance bot.\n\n` +
-      `📝 Para registrar um *gasto*, envie uma mensagem como:\n` +
+      `📝 Para registrar um GASTO, envie uma mensagem como:\n` +
       `• "gastei 50 reais no mercado"\n` +
       `• "gastei 100 reais de uber hoje"\n` +
       `• "gastei 200 reais de aluguel em 01/01/2025"\n\n` +
-      `💰 Para registrar um *ganho*, envie uma mensagem como:\n` +
+      `💰 Para registrar um GANHO, envie uma mensagem como:\n` +
       `• "ganhei 1500 reais de salário"\n` +
       `• "lucrei 500 reais que recebi de freela"\n` +
       `• "lucrei 200 reais de venda hoje"\n\n` +
-      `📊 Use /relatorio <mês> para ver o relatório mensal.\n` +
+      `🔄 Gastos Fixos (NOVO)\n` +
+      `• /fixo - Criar gasto fixo mensal\n` +
+      `• /meu_fixos - Ver gastos fixos cadastrados\n\n` +
+      `📊 Use /relatorio (mês) para ver o relatório mensal\n` +
       `Exemplo: /relatorio agosto\n\n` +
-      `📥 Use /exportar <mês> para exportar transações em Excel.\n` +
+      `✏️ Use /editar para editar suas últimas transações\n\n` +
+      `📥 Use /exportar (mês) para exportar em Excel\n` +
       `Exemplo: /exportar agosto\n\n` +
-      `🌐 Use /site para acessar seu dashboard web com gráficos.`,
-      { parse_mode: 'Markdown' }
+      `🌐 Use /site para acessar seu dashboard web`
     );
   } catch (error) {
     console.error('Erro ao registrar usuário:', error);
@@ -361,12 +404,14 @@ export async function handleGasto(ctx: Context) {
       await ctx.reply(
         '❌ Não consegui categorizar sua transação.\n\n' +  
         'Por favor, escolha uma categoria:\n' +
-        '1️⃣ TRANSPORTE\n' +
-        '2️⃣ LAZER\n' +
-        '3️⃣ SAUDE\n' +
-        '4️⃣ MORADIA\n' +
-        '5️⃣ ESTUDOS\n' +
-        '6️⃣ LUCROS (ganhos)'
+        '1️⃣ ALIMENTACAO\n' +
+        '2️⃣ TRANSPORTE\n' +
+        '3️⃣ LAZER\n' +
+        '4️⃣ SAUDE\n' +
+        '5️⃣ MORADIA\n' +
+        '6️⃣ ESTUDOS\n' +
+        '7️⃣ TRABALHO\n' +
+        '8️⃣ LUCROS (ganhos)'
       );
       return;
     }
@@ -404,8 +449,9 @@ export async function handleGasto(ctx: Context) {
     mensagemConfirmacao += `\n❓ *Confirma para salvar?*\n\n`;
     mensagemConfirmacao += `Responda: *sim* ou *não*\n`;
     mensagemConfirmacao += `Ou escolha outra categoria digitando o número:\n`;
-    mensagemConfirmacao += `1️⃣ TRANSPORTE | 2️⃣ LAZER | 3️⃣ SAUDE\n`;
-    mensagemConfirmacao += `4️⃣ MORADIA | 5️⃣ ESTUDOS | 6️⃣ LUCROS (ganhos)`;
+    mensagemConfirmacao += `1️⃣ ALIMENTACAO | 2️⃣ TRANSPORTE | 3️⃣ LAZER\n`;
+    mensagemConfirmacao += `4️⃣ SAUDE | 5️⃣ MORADIA | 6️⃣ ESTUDOS\n`;
+    mensagemConfirmacao += `7️⃣ TRABALHO | 8️⃣ LUCROS (ganhos)`;
 
     await ctx.reply(mensagemConfirmacao, { parse_mode: 'Markdown' });
   } catch (error) {
@@ -435,12 +481,14 @@ export async function handleConfirmacao(ctx: Context) {
 
   // Mapeamento de números para categorias
   const categoriaMap: Record<string, string> = {
-    '1': 'TRANSPORTE',
-    '2': 'LAZER',
-    '3': 'SAUDE',
-    '4': 'MORADIA',
-    '5': 'ESTUDOS',
-    '6': 'LUCROS',
+    '1': 'ALIMENTACAO',
+    '2': 'TRANSPORTE',
+    '3': 'LAZER',
+    '4': 'SAUDE',
+    '5': 'MORADIA',
+    '6': 'ESTUDOS',
+    '7': 'TRABALHO',
+    '8': 'LUCROS',
   };
 
   // Se digitou um número, altera a categoria
@@ -493,8 +541,352 @@ export async function handleConfirmacao(ctx: Context) {
   } else {
     // Resposta não reconhecida, mantém pendente
     await ctx.reply(
-      '⚠️ Por favor, responda *sim* ou *não*, ou escolha uma categoria (1-6).',
+      '⚠️ Por favor, responda *sim* ou *não*, ou escolha uma categoria (1-8).',
       { parse_mode: 'Markdown' }
     );
   }
 }
+
+/**
+ * Handler para comando /fixo
+ * Cria um novo gasto fixo recorrente
+ */
+export async function handleFixo(ctx: Context) {
+  const telegramUserId = ctx.from?.id;
+  const texto = ctx.message && 'text' in ctx.message ? ctx.message.text : '';
+
+  if (!telegramUserId) {
+    await ctx.reply('❌ Erro ao identificar usuário.');
+    return;
+  }
+
+  // Verifica se o usuário está registrado
+  const usuario = await obterUsuarioPorTelegramId(telegramUserId);
+  if (!usuario) {
+    await ctx.reply('⚠️ Você precisa usar /start primeiro para se registrar.');
+    return;
+  }
+
+  // Se já tem estado pendente, trata como continuação do fluxo
+  const pendente = gastosFixosPendentes.get(telegramUserId);
+  if (pendente) {
+    await handleFluxoFixo(ctx);
+    return;
+  }
+
+  // Cria estado pendente inicial para marcar que está no fluxo de criação de gasto fixo
+  gastosFixosPendentes.set(telegramUserId, {
+    userId: usuario.id,
+    valor: 0,
+    categoria: '',
+    descricao: '',
+    aguardandoDia: false,
+  });
+
+  await ctx.reply(
+    '📌 *Criar Gasto Fixo Recorrente*\n\n' +
+    'Gastos fixos são despesas que se repetem *todo mês* no mesmo dia.\n\n' +
+    '🔔 Você receberá uma notificação no dia escolhido e poderá confirmar ou pular.\n\n' +
+    'Envie o valor e descrição do gasto fixo:\n\n' +
+    '*Exemplos:*\n' +
+    '• "1500 aluguel"\n' +
+    '• "150 internet"\n' +
+    '• "80 assinatura netflix"',
+    { parse_mode: 'Markdown' }
+  );
+}
+
+/**
+ * Fluxo conversacional para criar gasto fixo
+ */
+export async function handleFluxoFixo(ctx: Context) {
+  const telegramUserId = ctx.from?.id;
+  const texto = ctx.message && 'text' in ctx.message ? ctx.message.text?.toLowerCase().trim() : '';
+
+  if (!telegramUserId || !texto) {
+    return;
+  }
+
+  const usuario = await obterUsuarioPorTelegramId(telegramUserId);
+  if (!usuario) {
+    return;
+  }
+
+  const pendente = gastosFixosPendentes.get(telegramUserId);
+
+  // Se não tem estado pendente, erro (não deveria acontecer)
+  if (!pendente) {
+    await ctx.reply('❌ Erro: use /fixo para iniciar a criação de um gasto fixo.');
+    return;
+  }
+
+  // Se está no estado inicial (valor = 0), significa que está aguardando a descrição do gasto
+  if (pendente.valor === 0 && !pendente.aguardandoDia) {
+    await ctx.reply('🤔 Analisando gasto fixo...');
+
+    try {
+      // Categoriza usando Ollama
+      const gastoCategorizado = await categorizarGasto(texto);
+
+      if (!gastoCategorizado) {
+        await ctx.reply(
+          '❌ Não consegui categorizar. Por favor, escolha uma categoria:\n' +
+          '1️⃣ ALIMENTACAO | 2️⃣ TRANSPORTE | 3️⃣ LAZER\n' +
+          '4️⃣ SAUDE | 5️⃣ MORADIA | 6️⃣ ESTUDOS\n' +
+          '7️⃣ TRABALHO | 8️⃣ LUCROS (ganhos)'
+        );
+        return;
+      }
+
+      // Salva estado pendente
+      gastosFixosPendentes.set(telegramUserId, {
+        userId: usuario.id,
+        valor: gastoCategorizado.valor,
+        categoria: gastoCategorizado.categoria,
+        descricao: gastoCategorizado.descricao,
+        nota: gastoCategorizado.nota,
+        aguardandoDia: false,
+      });
+
+      let mensagem = `📌 *Gasto Fixo Recorrente*\n\n`;
+      mensagem += `Este gasto será registrado *automaticamente todo mês* no dia que você escolher.\n\n`;
+      mensagem += `💰 Valor: ${formatarMoeda(gastoCategorizado.valor)}\n`;
+      mensagem += `📂 Categoria: ${gastoCategorizado.categoria}\n`;
+      mensagem += `📝 Descrição: ${gastoCategorizado.descricao}\n`;
+      if (gastoCategorizado.nota) {
+        mensagem += `📌 Nota: ${gastoCategorizado.nota}\n`;
+      }
+      mensagem += `\n❓ *Confirma para continuar?*\n\n`;
+      mensagem += `Responda: *sim* ou *não*\n`;
+      mensagem += `Ou escolha outra categoria (1-8)`;
+
+      await ctx.reply(mensagem, { parse_mode: 'Markdown' });
+    } catch (error) {
+      console.error('Erro ao processar gasto fixo:', error);
+      gastosFixosPendentes.delete(telegramUserId);
+      await ctx.reply('❌ Erro ao processar. Use /fixo para tentar novamente.');
+    }
+    return;
+  }
+
+  // Se aguardando confirmação da categoria
+  if (!pendente.aguardandoDia) {
+    // Mapeamento de números para categorias
+    const categoriaMap: Record<string, string> = {
+      '1': 'ALIMENTACAO',
+      '2': 'TRANSPORTE',
+      '3': 'LAZER',
+      '4': 'SAUDE',
+      '5': 'MORADIA',
+      '6': 'ESTUDOS',
+      '7': 'TRABALHO',
+      '8': 'LUCROS',
+    };
+
+    // Se digitou um número, altera a categoria
+    if (categoriaMap[texto]) {
+      pendente.categoria = categoriaMap[texto];
+      gastosFixosPendentes.set(telegramUserId, pendente);
+
+      let mensagem = `✅ *Categoria alterada para: ${pendente.categoria}*\n\n`;
+      mensagem += `💰 Valor: ${formatarMoeda(pendente.valor)}\n`;
+      mensagem += `📝 Descrição: ${pendente.descricao}\n`;
+      mensagem += `\n❓ *Confirma?* (sim/não)`;
+
+      await ctx.reply(mensagem, { parse_mode: 'Markdown' });
+      return;
+    }
+
+    // Confirmação
+    if (texto === 'sim' || texto === 's' || texto === 'confirmar' || texto === 'confirmo') {
+      pendente.aguardandoDia = true;
+      gastosFixosPendentes.set(telegramUserId, pendente);
+
+      await ctx.reply(
+        '📅 *Qual dia do mês?*\n\n' +
+        'Digite um número de 1 a 31.\n' +
+        '⚠️ Se escolher acima de 28, será ajustado para o dia 28 automaticamente.',
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    } else if (texto === 'não' || texto === 'nao' || texto === 'n' || texto === 'cancelar') {
+      gastosFixosPendentes.delete(telegramUserId);
+      await ctx.reply('❌ Criação de gasto fixo cancelada.');
+      return;
+    }
+  }
+
+  // Se aguardando dia do mês
+  if (pendente.aguardandoDia) {
+    const dia = parseInt(texto);
+    if (isNaN(dia) || dia < 1 || dia > 31) {
+      await ctx.reply('⚠️ Por favor, digite um número válido entre 1 e 31.');
+      return;
+    }
+
+    try {
+      const resultado = await criarGastoFixo(
+        pendente.userId,
+        pendente.valor,
+        pendente.categoria,
+        pendente.descricao,
+        dia,
+        pendente.nota
+      );
+
+      gastosFixosPendentes.delete(telegramUserId);
+
+      let mensagem = `✅ Gasto Fixo Recorrente criado!\n\n`;
+      mensagem += `💰 ${formatarMoeda(pendente.valor)} - ${pendente.categoria}\n`;
+      mensagem += `📝 ${pendente.descricao}\n`;
+      mensagem += `📅 Repetir todo dia ${resultado.diaAjustado} do mês\n\n`;
+      
+      if (resultado.diaAjustado !== dia) {
+        mensagem += `⚠️ Ajustado para dia 28 (evita problemas em meses curtos)\n\n`;
+      }
+      
+      mensagem += `🔔 Como funciona:\n`;
+      mensagem += `• Todo dia ${resultado.diaAjustado}, às 9h, você receberá uma mensagem\n`;
+      mensagem += `• Você pode confirmar (sim) ou pular (não) naquele mês\n`;
+      mensagem += `• Use /meu_fixos para ver todos os gastos fixos ativos`;
+
+      await ctx.reply(mensagem);
+    } catch (error) {
+      console.error('Erro ao criar gasto fixo:', error);
+      await ctx.reply('❌ Erro ao salvar gasto fixo. Tente novamente.');
+    }
+  }
+}
+
+/**
+ * Handler para comando /meu_fixos
+ * Lista gastos fixos do usuário
+ */
+export async function handleMeuFixos(ctx: Context) {
+  const telegramUserId = ctx.from?.id;
+
+  if (!telegramUserId) {
+    await ctx.reply('❌ Erro ao identificar usuário.');
+    return;
+  }
+
+  const usuario = await obterUsuarioPorTelegramId(telegramUserId);
+  if (!usuario) {
+    await ctx.reply('⚠️ Você precisa usar /start primeiro para se registrar.');
+    return;
+  }
+
+  try {
+    const gastos = await listarGastosFixos(usuario.id);
+
+    if (gastos.length === 0) {
+      await ctx.reply(
+        '📌 Você não tem gastos fixos cadastrados.\n\n' +
+        'Use /fixo para criar um novo gasto fixo.'
+      );
+      return;
+    }
+
+    let mensagem = `📌 *Seus Gastos Fixos:*\n\n`;
+
+    for (const gasto of gastos) {
+      mensagem += `💰 ${formatarMoeda(Number(gasto.valor))} - ${gasto.categoria}\n`;
+      mensagem += `   📝 ${gasto.descricao}\n`;
+      mensagem += `   📅 Todo dia ${gasto.diaDoMes}\n`;
+      mensagem += `   🆔 ID: \`${gasto.id}\`\n\n`;
+    }
+
+    mensagem += `\n*Gerenciar:*\n`;
+    mensagem += `• /fixo_editar <ID> - Editar\n`;
+    mensagem += `• /fixo_cancelar <ID> - Desativar`;
+
+    await ctx.reply(mensagem, { parse_mode: 'Markdown' });
+  } catch (error) {
+    console.error('Erro ao listar gastos fixos:', error);
+    await ctx.reply('❌ Erro ao listar gastos fixos. Tente novamente.');
+  }
+}
+
+/**
+ * Handler para comando /editar
+ * Edita uma transação existente
+ */
+export async function handleEditar(ctx: Context) {
+  const telegramUserId = ctx.from?.id;
+
+  if (!telegramUserId) {
+    await ctx.reply('❌ Erro ao identificar usuário.');
+    return;
+  }
+
+  const usuario = await obterUsuarioPorTelegramId(telegramUserId);
+  if (!usuario) {
+    await ctx.reply('⚠️ Você precisa usar /start primeiro para se registrar.');
+    return;
+  }
+
+  try {
+    // Busca últimas 5 transações
+    const transacoes = await buscarUltimasTransacoes(usuario.id, 5);
+
+    if (transacoes.length === 0) {
+      await ctx.reply('📝 Você não tem transações para editar.');
+      return;
+    }
+
+    let mensagem = `📝 *Suas últimas transações:*\n\n`;
+
+    transacoes.forEach((t, index) => {
+      const emoji = t.categoria === 'LUCROS' ? '💰' : '💸';
+      mensagem += `${index + 1}️⃣ ${emoji} ${formatarMoeda(Number(t.valor))} - ${t.categoria}\n`;
+      mensagem += `   📝 ${t.descricao}\n`;
+      mensagem += `   📅 ${formatarData(t.dataGasto)}\n`;
+      mensagem += `   🆔 \`${t.id}\`\n\n`;
+    });
+
+    mensagem += `\n*Qual deseja editar?*\n`;
+    mensagem += `Digite o número (1-${transacoes.length})`;
+
+    await ctx.reply(mensagem, { parse_mode: 'Markdown' });
+
+    // Aguarda escolha do usuário (implementar próxima interação)
+  } catch (error) {
+    console.error('Erro ao listar transações:', error);
+    await ctx.reply('❌ Erro ao buscar transações. Tente novamente.');
+  }
+}
+
+/**
+ * Handler para comando /testar_fixos
+ * Executa o scheduler de gastos fixos manualmente (útil para testes)
+ */
+export async function handleTestarFixos(ctx: Context, bot: any) {
+  const telegramUserId = ctx.from?.id;
+
+  if (!telegramUserId) {
+    await ctx.reply('❌ Erro ao identificar usuário.');
+    return;
+  }
+
+  const usuario = await obterUsuarioPorTelegramId(telegramUserId);
+  if (!usuario) {
+    await ctx.reply('⚠️ Você precisa usar /start primeiro para se registrar.');
+    return;
+  }
+
+  await ctx.reply('🔄 Executando verificação de gastos fixos...');
+
+  try {
+    const { executarSchedulerManualmente } = await import('../scheduler/recurringScheduler');
+    await executarSchedulerManualmente(bot);
+    
+    await ctx.reply(
+      '✅ Verificação concluída!\n\n' +
+      'Se houver gastos fixos para hoje, você receberá as confirmações agora.'
+    );
+  } catch (error) {
+    console.error('Erro ao executar scheduler:', error);
+    await ctx.reply('❌ Erro ao executar verificação. Tente novamente.');
+  }
+}
+

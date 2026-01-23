@@ -22,16 +22,17 @@ enum Categoria {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  telegramId   BigInt        @unique @map("telegram_id")
-  firstName    String?       @map("first_name")
-  lastName     String?       @map("last_name")
-  username     String?       @unique
-  languageCode String?       @map("language_code")
-  criadoEm     DateTime      @default(now()) @map("criado_em")
-  atualizadoEm DateTime      @updatedAt @map("atualizado_em")
-  transactions Transaction[]
-  accessTokens AccessToken[]
+  id                    String                 @id @default(uuid())
+  telegramId            BigInt                 @unique @map("telegram_id")
+  firstName             String?                @map("first_name")
+  lastName              String?                @map("last_name")
+  username              String?                @unique
+  languageCode          String?                @map("language_code")
+  criadoEm              DateTime               @default(now()) @map("criado_em")
+  atualizadoEm          DateTime               @updatedAt @map("atualizado_em")
+  transactions          Transaction[]
+  accessTokens          AccessToken[]
+  recurringTransactions RecurringTransaction[]
 
   @@map("users")
 }
@@ -67,4 +68,24 @@ model AccessToken {
   @@index([token])
   @@index([userId])
   @@map("access_tokens")
+}
+
+model RecurringTransaction {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  valor        Decimal   @db.Decimal(10, 2)
+  descricao    String
+  categoria    Categoria
+  diaDoMes     Int       @map("dia_do_mes") // 1-28
+  ativo        Boolean   @default(true)
+  nota         String?
+  criadoEm     DateTime  @default(now()) @map("criado_em")
+  atualizadoEm DateTime  @updatedAt @map("atualizado_em")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, ativo])
+  @@index([diaDoMes, ativo])
+  @@map("recurring_transactions")
 }

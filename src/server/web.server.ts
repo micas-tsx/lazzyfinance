@@ -3,7 +3,13 @@ import cors from 'cors';
 import { env } from '../config/env';
 import { validarToken, limparTokensExpirados } from '../services/token.service';
 import { obterUsuarioPorId } from '../services/user.service';
-import { buscarTransacoesPorMes, gerarRelatorioMensal } from '../services/transaction.service';
+import { 
+  buscarTransacoesPorMes, 
+  gerarRelatorioMensal, 
+  atualizarTransacao, 
+  deletarTransacao 
+} from '../services/transaction.service';
+import { listarGastosFixos } from '../services/recurring.service';
 import { Transaction } from '@prisma/client';
 
 const app = express();
@@ -200,6 +206,110 @@ app.get('/api/transactions/all', autenticarToken, async (req: Request, res: Resp
  */
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+/**
+ * PUT /api/transactions/:id
+ * Atualiza uma transação existente
+ */
+app.put('/api/transactions/:id', autenticarToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const transacaoId = req.params.id;
+    const { valor, categoria, descricao, dataGasto, nota } = req.body;
+    
+    console.log(`[WEB SERVER] Atualizando transação ${transacaoId} para usuário ${userId}`);
+    
+    // Validações básicas
+    if (!transacaoId) {
+      return res.status(400).json({ error: 'ID da transação não fornecido' });
+    }
+    
+    // Prepara dados para atualização
+    const dadosAtualizacao: any = {};
+    if (valor !== undefined) dadosAtualizacao.valor = Number(valor);
+    if (categoria) dadosAtualizacao.categoria = categoria;
+    if (descricao) dadosAtualizacao.descricao = descricao;
+    if (dataGasto) dadosAtualizacao.dataGasto = new Date(dataGasto);
+    if (nota !== undefined) dadosAtualizacao.nota = nota;
+    
+    const sucesso = await atualizarTransacao(transacaoId, userId, dadosAtualizacao);
+    
+    if (!sucesso) {
+      return res.status(404).json({ error: 'Transação não encontrada ou não pertence ao usuário' });
+    }
+    
+    console.log(`[WEB SERVER] Transação ${transacaoId} atualizada com sucesso`);
+    res.json({ success: true, message: 'Transação atualizada com sucesso' });
+  } catch (error) {
+    console.error('[WEB SERVER] Erro ao atualizar transação:', error);
+    res.status(500).json({ error: 'Erro ao atualizar transação' });
+  }
+});
+
+/**
+ * GET /api/recurring
+ * Retorna gastos fixos (recorrentes) do usuário autenticado
+ */
+app.get('/api/recurring', autenticarToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    
+    console.log(`[WEB SERVER] Buscando gastos fixos para usuário ${userId}`);
+    
+    const gastosFixos = await listarGastosFixos(userId);
+    
+    console.log(`[WEB SERVER] ${gastosFixos.length} gastos fixos encontrados`);
+    
+    // Formata gastos fixos para resposta
+    const gastosFormatados = gastosFixos.map((g) => ({
+      id: g.id,
+      valor: Number(g.valor),
+      categoria: g.categoria,
+      descricao: g.descricao,
+      diaDoMes: g.diaDoMes,
+      nota: g.nota,
+      ativo: g.ativo,
+      criadoEm: g.criadoEm.toISOString(),
+    }));
+    
+    res.json({
+      gastosFixos: gastosFormatados,
+      total: gastosFormatados.length,
+    });
+  } catch (error) {
+    console.error('[WEB SERVER] Erro ao buscar gastos fixos:', error);
+    res.status(500).json({ error: 'Erro ao buscar gastos fixos' });
+  }
+});
+
+/**
+ * DELETE /api/transactions/:id
+ * Deleta uma transação existente
+ */
+app.delete('/api/transactions/:id', autenticarToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const transacaoId = req.params.id;
+    
+    console.log(`[WEB SERVER] Deletando transação ${transacaoId} para usuário ${userId}`);
+    
+    if (!transacaoId) {
+      return res.status(400).json({ error: 'ID da transação não fornecido' });
+    }
+    
+    const sucesso = await deletarTransacao(transacaoId, userId);
+    
+    if (!sucesso) {
+      return res.status(404).json({ error: 'Transação não encontrada ou não pertence ao usuário' });
+    }
+    
+    console.log(`[WEB SERVER] Transação ${transacaoId} deletada com sucesso`);
+    res.json({ success: true, message: 'Transação deletada com sucesso' });
+  } catch (error) {
+    console.error('[WEB SERVER] Erro ao deletar transação:', error);
+    res.status(500).json({ error: 'Erro ao deletar transação' });
+  }
 });
 
 /**

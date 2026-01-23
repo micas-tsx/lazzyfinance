@@ -23,11 +23,13 @@ Descrição: "${descricao}"
 Categorias disponíveis: ALIMENTACAO, TRANSPORTE, LAZER, SAUDE, MORADIA, ESTUDOS, TRABALHO, LUCROS
 
 IMPORTANTE: 
-- Se a descrição indicar que é um GANHO/RECEITA (ex: "recebi", "ganhei", "salário", "venda", "pagamento recebido"), use a categoria LUCROS
-- Se for um GASTO/DESPESA, use uma das outras categorias conforme o contexto
-- ALIMENTACAO: comida, restaurante, mercado, compras de alimentos
-- TRABALHO: despesas de trabalho, materiais, equipamentos
-- Use LUCROS apenas para receitas/ganhos
+- Por PADRÃO, assuma que é um GASTO/DESPESA (use ALIMENTACAO, TRANSPORTE, LAZER, SAUDE, MORADIA, ESTUDOS ou TRABALHO)
+- Use LUCROS APENAS se houver palavras explícitas de ganho: "recebi", "ganhei", "lucrei", "salário", "pagamento recebido", "venda de", "renda"
+- NUNCA use LUCROS para gastos comuns como "aluguel", "conta", "mensalidade", "assinatura"
+- MORADIA: aluguel, condomínio, luz, água, gás, IPTU, internet residencial
+- ALIMENTACAO: comida, restaurante, mercado, delivery, lanche
+- TRANSPORTE: uber, gasolina, estacionamento, ônibus, metrô
+- TRABALHO: despesas de trabalho, materiais, equipamentos profissionais
 
 Extraia da descrição:
 1. O valor numérico (se houver)
@@ -159,10 +161,21 @@ function inferirCategoria(descricao: string): string {
     // Moradia
     moradia: 'MORADIA',
     aluguel: 'MORADIA',
+    alugueis: 'MORADIA',
+    alugéis: 'MORADIA',
+    condominio: 'MORADIA',
+    condomínio: 'MORADIA',
     conta: 'MORADIA',
     luz: 'MORADIA',
+    energia: 'MORADIA',
     agua: 'MORADIA',
     água: 'MORADIA',
+    gas: 'MORADIA',
+    gás: 'MORADIA',
+    internet: 'MORADIA',
+    iptu: 'MORADIA',
+    casa: 'MORADIA',
+    apartamento: 'MORADIA',
     // Estudos
     estudos: 'ESTUDOS',
     curso: 'ESTUDOS',

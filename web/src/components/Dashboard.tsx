@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { type Transaction, type Stats } from '../types';
-import { LineChart }  from './LineChart';
+import { LineChart } from './LineChart';
 import { PieChart } from './PieChart';
 import { TransactionTable } from './TransactionTable';
 import { MonthFilter } from './MonthFilter';
+import { EditTransactionModal } from './EditTransactionModal';
+import { RecurringTransactions } from './RecurringTransactions';
 import { Sparkles, TrendingUp, Wallet } from 'lucide-react';
 
 export function Dashboard() {
@@ -15,6 +17,9 @@ export function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const [ano, setAno] = useState(new Date().getFullYear());
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [recurringTransactions, setRecurringTransactions] = useState<any[]>([]);
 
   console.log('[Dashboard] Componente montado');
 
@@ -39,7 +44,9 @@ export function Dashboard() {
       console.log('[Dashboard] Buscando todas as transações...');
       const allData = await apiService.getAllTransactions();
       setAllTransactions(allData.transacoes);
-
+      console.log('[Dashboard] Buscando gastos fixos...');
+      const recurringData = await apiService.getRecurringTransactions();
+      setRecurringTransactions(recurringData.gastosFixos);
       console.log('[Dashboard] Buscando dados do mês...');
       await loadMonthData();
     } catch (err: any) {
@@ -75,6 +82,59 @@ export function Dashboard() {
       style: 'currency',
       currency: 'BRL',
     }).format(value);
+  };
+
+  const handleEdit = (transaction: Transaction) => {
+    console.log('[Dashboard] Editando transação:', transaction.id);
+    setEditingTransaction(transaction);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDelete = async (transaction: Transaction) => {
+    const confirmDelete = window.confirm(
+      `Deseja realmente deletar esta transação?\n\n${transaction.descricao} - ${formatCurrency(transaction.valor)}`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      console.log('[Dashboard] Deletando transação:', transaction.id);
+      await apiService.deleteTransaction(transaction.id);
+
+      // Recarrega dados
+      await loadMonthData();
+      await loadAllTransactions();
+
+      console.log('[Dashboard] Transação deletada com sucesso');
+    } catch (err: any) {
+      console.error('[Dashboard] Erro ao deletar transação:', err);
+      alert('Erro ao deletar transação: ' + (err.message || 'Erro desconhecido'));
+    }
+  };
+
+  const handleSaveEdit = async (id: string, dados: any) => {
+    try {
+      console.log('[Dashboard] Salvando edição da transação:', id);
+      await apiService.updateTransaction(id, dados);
+
+      // Recarrega dados
+      await loadMonthData();
+      await loadAllTransactions();
+
+      console.log('[Dashboard] Transação atualizada com sucesso');
+    } catch (err: any) {
+      console.error('[Dashboard] Erro ao atualizar transação:', err);
+      throw err;
+    }
+  };
+
+  const loadAllTransactions = async () => {
+    try {
+      const allData = await apiService.getAllTransactions();
+      setAllTransactions(allData.transacoes);
+    } catch (err: any) {
+      console.error('[Dashboard] Erro ao carregar todas as transações:', err);
+    }
   };
 
   const baseFluxo = Math.max(stats?.totalGanhos ?? 0, 0) + Math.max(stats?.totalGastos ?? 0, 0);
@@ -191,14 +251,39 @@ export function Dashboard() {
           </div>
         </div>
 
+        {/* Recurring Transactions */}
+        {recurringTransactions.length > 0 && (
+          <div className="mb-8">
+            <RecurringTransactions gastosFixos={recurringTransactions} />
+          </div>
+        )}
+
         {/* Transactions Table */}
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
             Transações do Mês
           </h2>
-          <TransactionTable transactions={monthTransactions} />
+          <TransactionTable
+            transactions={monthTransactions}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+          {/* Edit Modal */}
+          {editingTransaction && (
+            <EditTransactionModal
+              transaction={editingTransaction}
+              isOpen={isEditModalOpen}
+              onClose={() => {
+                setIsEditModalOpen(false);
+                setEditingTransaction(null);
+              }}
+              onSave={handleSaveEdit}
+            />
+          )}
         </div>
       </main>
+
+
     </div>
   );
 }

@@ -1,12 +1,14 @@
 import type { ReactElement } from 'react';
 import { type Transaction } from '../types';
-import { Book, Car, ChevronRight, Home, Medal, PartyPopper, TrendingUp, Wallet, Utensils, Briefcase } from 'lucide-react';
+import { Book, Car, ChevronRight, Home, Medal, PartyPopper, TrendingUp, Wallet, Utensils, Briefcase, Pencil, Trash2 } from 'lucide-react';
 
 interface TransactionTableProps {
   transactions: Transaction[];
+  onEdit?: (transaction: Transaction) => void;
+  onDelete?: (transaction: Transaction) => void;
 }
 
-export function TransactionTable({ transactions }: TransactionTableProps) {
+export function TransactionTable({ transactions, onEdit, onDelete }: TransactionTableProps) {
   console.log('[TransactionTable] Renderizando tabela com', transactions.length, 'transações');
 
   const getIcon = (categoria: string) => {
@@ -46,6 +48,7 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
               <th className="pb-6 px-4">Data</th>
               <th className="pb-6 px-4">Detalhes</th>
               <th className="pb-6 px-4 text-right">Valor</th>
+              <th className="pb-6 px-4 text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -67,6 +70,28 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
                 </td>
                 <td className={`py-5 px-4 text-right font-black ${t.categoria === 'LUCROS' ? 'text-emerald-400' : 'text-slate-300'}`}>
                   {t.categoria === 'LUCROS' ? '+' : '-'} {(t.valor)}
+                </td>
+                <td className="py-5 px-4 text-right">
+                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onEdit && (
+                      <button
+                        onClick={() => onEdit(t)}
+                        className="p-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 transition-colors"
+                        title="Editar"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        onClick={() => onDelete(t)}
+                        className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
+                        title="Deletar"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

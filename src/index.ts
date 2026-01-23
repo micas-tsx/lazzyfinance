@@ -2,6 +2,7 @@ import { criarBot } from './bot/bot';
 import { prisma } from './database/client';
 import { iniciarLimpezaAutomatica } from './utils/fileCleanup';
 import { iniciarServidorWeb } from './server/web.server';
+import { iniciarSchedulerGastosFixos } from './scheduler/recurringScheduler';
 
 async function main() {
   console.log('🤖 Iniciando LazzyFinance Bot...');
@@ -29,6 +30,10 @@ async function main() {
   // Inicia limpeza automática de arquivos antigos
   const limpezaInterval = iniciarLimpezaAutomatica();
   console.log('🧹 Limpeza automática de arquivos iniciada (a cada 1 hora)');
+
+  // Inicia scheduler de gastos fixos
+  iniciarSchedulerGastosFixos(bot);
+  console.log('⏰ Scheduler de gastos fixos iniciado');
 
   // Inicia o bot
   bot.launch(() => {

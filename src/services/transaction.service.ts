@@ -100,3 +100,85 @@ export async function gerarRelatorioMensal(userId: string, mes: number, ano: num
     transacoes,
   };
 }
+
+/**
+ * Busca últimas N transações de um usuário
+ * Útil para listar transações recentes para edição
+ */
+export async function buscarUltimasTransacoes(userId: string, limite: number = 5) {
+  const transacoes = await prisma.transaction.findMany({
+    where: {
+      userId,
+    },
+    orderBy: {
+      dataGasto: 'desc',
+    },
+    take: limite,
+  });
+
+  return transacoes;
+}
+
+/**
+ * Busca uma transação específica por ID
+ */
+export async function buscarTransacaoPorId(id: string, userId: string) {
+  const transacao = await prisma.transaction.findFirst({
+    where: {
+      id,
+      userId, // Garante isolamento
+    },
+  });
+
+  return transacao;
+}
+
+/**
+ * Atualiza uma transação existente
+ * IMPORTANTE: Sempre valida userId para garantir isolamento
+ */
+export async function atualizarTransacao(
+  id: string,
+  userId: string,
+  dados: {
+    valor?: number;
+    categoria?: string;
+    descricao?: string;
+    dataGasto?: Date;
+    nota?: string;
+  }
+): Promise<boolean> {
+  const categoriaEnum = dados.categoria ? (dados.categoria.toUpperCase() as Categoria) : undefined;
+
+  const updated = await prisma.transaction.updateMany({
+    where: {
+      id,
+      userId, // CRÍTICO: Garante que só atualiza se for do usuário
+    },
+    data: {
+      ...(dados.valor !== undefined && { valor: dados.valor }),
+      ...(categoriaEnum && { categoria: categoriaEnum }),
+      ...(dados.descricao && { descricao: dados.descricao }),
+      ...(dados.dataGasto && { dataGasto: dados.dataGasto }),
+      ...(dados.nota !== undefined && { nota: dados.nota }),
+    },
+  });
+
+  return updated.count > 0;
+}
+
+/**
+ * Deleta uma transação
+ * IMPORTANTE: Sempre valida userId para garantir isolamento
+ */
+export async function deletarTransacao(id: string, userId: string): Promise<boolean> {
+  const deleted = await prisma.transaction.deleteMany({
+    where: {
+      id,
+      userId, // CRÍTICO: Garante que só deleta se for do usuário
+    },
+  });
+
+  return deleted.count > 0;
+}
+
