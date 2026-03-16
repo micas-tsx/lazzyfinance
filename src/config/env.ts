@@ -1,13 +1,15 @@
 import dotenv from 'dotenv';
 
-// Carrega variáveis de ambiente do arquivo .env.local
-dotenv.config({ path: '.env.local' });
+// Carrega variáveis de ambiente
+dotenv.config(); // Carrega .env por padrão
+dotenv.config({ path: '.env.local', override: true }); // Sobrescreve com .env.local se existir
+
+console.log('[ENV] WEB_PORT do process.env:', process.env.WEB_PORT);
 
 interface EnvConfig {
   telegramBotToken: string;
   databaseUrl: string;
-  ollamaBaseUrl: string;
-  ollamaModel: string;
+  geminiApiKey: string;
   webPort: number;
   webBaseUrl: string;
 }
@@ -15,8 +17,7 @@ interface EnvConfig {
 function validateEnv(): EnvConfig {
   const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
   const databaseUrl = process.env.DATABASE_URL;
-  const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-  const ollamaModel = process.env.OLLAMA_MODEL || 'llama2';
+  const geminiApiKey = process.env.GEMINI_API_KEY;
   const webPort = parseInt(process.env.WEB_PORT || '5173', 10);
   const webBaseUrl = process.env.WEB_BASE_URL || `http://localhost:${webPort}`;
 
@@ -28,11 +29,14 @@ function validateEnv(): EnvConfig {
     throw new Error('DATABASE_URL não encontrado no .env.local');
   }
 
+  if (!geminiApiKey) {
+    throw new Error('GEMINI_API_KEY não encontrado no .env.local');
+  }
+
   return {
     telegramBotToken,
     databaseUrl,
-    ollamaBaseUrl,
-    ollamaModel,
+    geminiApiKey,
     webPort,
     webBaseUrl,
   };

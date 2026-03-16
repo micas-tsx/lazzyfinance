@@ -1,5 +1,5 @@
 import { Context } from 'telegraf';
-import { categorizarGasto } from '../services/ollama.service';
+import { categorizarGasto } from '../services/gemini.service';
 import { 
   criarTransacao, 
   gerarRelatorioMensal, 
@@ -98,7 +98,7 @@ export async function handleSite(ctx: Context) {
     
     console.log(`[BOT] Token gerado: ${token.substring(0, 8)}...`);
     
-    // Monta URL do dashboard
+    console.log(`[BOT] Usando webBaseUrl: ${env.webBaseUrl}`);
     const url = `${env.webBaseUrl}/?token=${token}`;
     
     console.log(`[BOT] URL gerada: ${url}`);
@@ -106,6 +106,8 @@ export async function handleSite(ctx: Context) {
     await ctx.reply(
       `🌐 *Seu Dashboard LazzyFinance*\n\n` +
       `📊 Acesse seu painel com gráficos e relatórios:\n\n` +
+      `🔗 [CLIQUE AQUI PARA ABRIR](${url})\n\n` +
+      ` ou copie o link:\n` +
       `${url}\n\n` +
       `⚠️ *Atenção:* Este link é pessoal e expira em 7 dias.\n` +
       `Não compartilhe com outras pessoas.`,
@@ -397,7 +399,7 @@ export async function handleGasto(ctx: Context) {
   await ctx.reply('🤔 Analisando sua transação...');
 
   try {
-    // Categoriza o gasto usando Ollama
+    // Categoriza o gasto usando Gemini
     const gastoCategorizado = await categorizarGasto(texto);
 
     if (!gastoCategorizado) {
@@ -625,7 +627,7 @@ export async function handleFluxoFixo(ctx: Context) {
     await ctx.reply('🤔 Analisando gasto fixo...');
 
     try {
-      // Categoriza usando Ollama
+      // Categoriza usando Gemini
       const gastoCategorizado = await categorizarGasto(texto);
 
       if (!gastoCategorizado) {

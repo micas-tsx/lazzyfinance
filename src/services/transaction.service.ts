@@ -1,6 +1,6 @@
 import { prisma } from '../database/client';
 import { Categoria } from '@prisma/client';
-import { GastoCategorizado } from './ollama.service';
+import { GastoCategorizado } from './gemini.service';
 
 /**
  * Salva uma transação no banco de dados
