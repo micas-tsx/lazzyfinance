@@ -10,7 +10,11 @@ import {
   deletarTransacao 
 } from '../services/transaction.service';
 import { listarGastosFixos } from '../services/recurring.service';
-import { Transaction } from '@prisma/client';
+import { Transaction, Plan } from '@prisma/client';
+import Stripe from 'stripe';
+import { atualizarPlanoUsuario } from '../services/user.service';
+
+const stripe = new Stripe(env.stripeSecretKey || '');
 
 const app = express();
 
@@ -21,6 +25,66 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+/**
+ * Endpoint de Webhook do Stripe
+ * DEVE vir antes do express.json() para que o stripe-node possa validar o corpo bruto
+ */
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
+  const sig = req.headers['stripe-signature'];
+
+  if (!sig || !env.stripeWebhookSecret) {
+    console.error('[STRIPE WEBHOOK] ❌ Assinatura ou secret ausente');
+    return res.status(400).send('Webhook Error: Missing signature or secret');
+  }
+
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, env.stripeWebhookSecret);
+  } catch (err: any) {
+    console.error(`[STRIPE WEBHOOK] ❌ Erro de assinatura: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  console.log(`[STRIPE WEBHOOK] Evento recebido: ${event.type}`);
+
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const userId = session.client_reference_id;
+        
+        if (userId) {
+          // Ativa plano PRO por 30 dias
+          const premiumUntil = new Date();
+          premiumUntil.setDate(premiumUntil.getDate() + 30);
+          
+          await atualizarPlanoUsuario(userId, Plan.PRO, premiumUntil, session.customer as string);
+          console.log(`[STRIPE WEBHOOK] ✅ Usuário ${userId} promovido a PRO via Checkout`);
+        } else {
+          console.warn('[STRIPE WEBHOOK] ⚠️ Checkout completado mas client_reference_id ausente');
+        }
+        break;
+      }
+      
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+        
+        // Aqui poderíamos buscar o usuário pelo stripeCustomerId e rebaixar para FREE
+        // mas por simplicidade usaremos a data premiumUntil
+        break;
+      }
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error('[STRIPE WEBHOOK] ❌ Erro ao processar evento:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
 app.use(express.json());
 
 // Logging middleware para debug

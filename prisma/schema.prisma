@@ -21,6 +21,11 @@ enum Categoria {
   LUCROS
 }
 
+enum Plan {
+  FREE
+  PRO
+}
+
 model User {
   id                    String                 @id @default(uuid())
   telegramId            BigInt                 @unique @map("telegram_id")
@@ -28,6 +33,9 @@ model User {
   lastName              String?                @map("last_name")
   username              String?                @unique
   languageCode          String?                @map("language_code")
+  plan                  Plan                   @default(FREE)
+  stripeCustomerId      String?                @map("stripe_customer_id")
+  premiumUntil          DateTime?              @map("premium_until")
   criadoEm              DateTime               @default(now()) @map("criado_em")
   atualizadoEm          DateTime               @updatedAt @map("atualizado_em")
   transactions          Transaction[]

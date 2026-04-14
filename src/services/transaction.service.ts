@@ -1,5 +1,5 @@
 import { prisma } from '../database/client';
-import { Categoria } from '@prisma/client';
+import { Categoria, Plan } from '@prisma/client';
 import { GastoCategorizado } from './gemini.service';
 
 /**
@@ -14,6 +14,30 @@ export async function criarTransacao(
   dataGasto: Date,
   nota?: string
 ): Promise<{ id: string }> {
+  // Verifica limites do plano FREE
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true },
+  });
+
+  if (user?.plan === Plan.FREE) {
+    const agora = new Date();
+    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+
+    const count = await prisma.transaction.count({
+      where: {
+        userId,
+        criadoEm: {
+          gte: inicioMes,
+        },
+      },
+    });
+
+    if (count >= 50) {
+      throw new Error('LIMITE_TRANSACOES_ATINGIDO');
+    }
+  }
+
   const categoriaEnum = categoria.toUpperCase() as Categoria;
 
   const transaction = await prisma.transaction.create({

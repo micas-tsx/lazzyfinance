@@ -1,5 +1,5 @@
 import { prisma } from '../database/client';
-import { User } from '@prisma/client';
+import { User, Plan } from '@prisma/client';
 
 interface TelegramUser {
   id: number;
@@ -62,4 +62,46 @@ export async function obterUsuarioPorId(userId: string): Promise<User | null> {
   return await prisma.user.findUnique({
     where: { id: userId },
   });
+}
+
+/**
+ * Atualiza o plano de um usuário
+ */
+export async function atualizarPlanoUsuario(
+  userId: string,
+  plano: Plan,
+  premiumUntil?: Date,
+  stripeCustomerId?: string
+): Promise<User> {
+  return await prisma.user.update({
+    where: { id: userId },
+    data: {
+      plan: plano,
+      premiumUntil: premiumUntil || null,
+      ...(stripeCustomerId && { stripeCustomerId }),
+    },
+  });
+}
+
+/**
+ * Verifica se o usuário tem uma assinatura PRO ativa
+ */
+export async function temPlanoPro(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true, premiumUntil: true },
+  });
+
+  if (!user || user.plan !== Plan.PRO) {
+    return false;
+  }
+
+  // Se premiumUntil estiver definido, verifica se expirou
+  if (user.premiumUntil && user.premiumUntil < new Date()) {
+    // Aqui poderíamos automaticamente rebaixar o usuário para FREE
+    // mas por enquanto apenas retornamos false
+    return false;
+  }
+
+  return true;
 }

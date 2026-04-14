@@ -12,6 +12,9 @@ interface EnvConfig {
   geminiApiKey: string;
   webPort: number;
   webBaseUrl: string;
+  stripeProviderToken: string;
+  stripeSecretKey: string;
+  stripeWebhookSecret: string;
 }
 
 function validateEnv(): EnvConfig {
@@ -20,6 +23,10 @@ function validateEnv(): EnvConfig {
   const geminiApiKey = process.env.GEMINI_API_KEY;
   const webPort = parseInt(process.env.WEB_PORT || '5173', 10);
   const webBaseUrl = process.env.WEB_BASE_URL || `http://localhost:${webPort}`;
+
+  const stripeProviderToken = process.env.STRIPE_PROVIDER_TOKEN || '';
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
+  const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
   if (!telegramBotToken) {
     throw new Error('TELEGRAM_BOT_TOKEN não encontrado no .env.local');
@@ -39,6 +46,9 @@ function validateEnv(): EnvConfig {
     geminiApiKey,
     webPort,
     webBaseUrl,
+    stripeProviderToken,
+    stripeSecretKey,
+    stripeWebhookSecret,
   };
 }
 

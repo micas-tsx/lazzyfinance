@@ -32,6 +32,7 @@
     "exceljs": "^4.4.0",
     "express": "^4.22.1",
     "pg": "^8.20.0",
+    "stripe": "^20.4.1",
     "tailwindcss": "^4.1.18",
     "telegraf": "^4.15.3",
     "uuid": "^9.0.1"

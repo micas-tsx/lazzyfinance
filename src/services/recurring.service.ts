@@ -1,5 +1,5 @@
 import { prisma } from '../database/client';
-import { Categoria } from '@prisma/client';
+import { Categoria, Plan } from '@prisma/client';
 
 /**
  * Cria um gasto fixo recorrente
@@ -13,6 +13,25 @@ export async function criarGastoFixo(
   diaDoMes: number,
   nota?: string
 ): Promise<{ id: string; diaAjustado: number }> {
+  // Verifica limites do plano FREE
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true },
+  });
+
+  if (user?.plan === Plan.FREE) {
+    const count = await prisma.recurringTransaction.count({
+      where: {
+        userId,
+        ativo: true,
+      },
+    });
+
+    if (count >= 3) {
+      throw new Error('LIMITE_GASTOS_FIXOS_ATINGIDO');
+    }
+  }
+
   const categoriaEnum = categoria.toUpperCase() as Categoria;
   
   // Cap de dia 28

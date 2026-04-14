@@ -7,7 +7,8 @@ import {
   atualizarTransacao,
   buscarTransacaoPorId 
 } from '../services/transaction.service';
-import { criarOuObterUsuario, obterUsuarioPorTelegramId } from '../services/user.service';
+import { criarOuObterUsuario, obterUsuarioPorTelegramId, temPlanoPro } from '../services/user.service';
+import { Plan } from '@prisma/client';
 import { parseData, formatarData, formatarMoeda, parseMes } from '../utils/dateParser';
 import { gerarExcelTransacoes } from '../services/export.service';
 import { obterOuGerarToken } from '../services/token.service';
@@ -161,6 +162,7 @@ export async function handleStart(ctx: Context) {
       `✏️ Use /editar para editar suas últimas transações\n\n` +
       `📥 Use /exportar (mês) para exportar em Excel\n` +
       `Exemplo: /exportar agosto\n\n` +
+      `💎 Use /premium para se tornar PRO\n\n` +
       `🌐 Use /site para acessar seu dashboard web`
     );
   } catch (error) {
@@ -456,10 +458,85 @@ export async function handleGasto(ctx: Context) {
     mensagemConfirmacao += `7️⃣ TRABALHO | 8️⃣ LUCROS (ganhos)`;
 
     await ctx.reply(mensagemConfirmacao, { parse_mode: 'Markdown' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao processar gasto:', error);
-    await ctx.reply('❌ Erro ao processar seu gasto. Tente novamente.');
+    if (error.message === 'LIMITE_TRANSACOES_ATINGIDO') {
+      await ctx.reply(
+        '⚠️ *Limite atingido!*\n\n' +
+        'Você atingiu o limite de 50 transações por mês do plano gratuito.\n\n' +
+        '💎 Quer transações ilimitadas? Use /premium e adquira o plano PRO!',
+        { parse_mode: 'Markdown' }
+      );
+    } else {
+      await ctx.reply('❌ Erro ao processar seu gasto. Tente novamente.');
+    }
   }
+}
+
+/**
+ * Handler para comando /premium
+ */
+export async function handlePremium(ctx: Context) {
+  const telegramUserId = ctx.from?.id;
+  if (!telegramUserId) return;
+
+  try {
+    const usuario = await obterUsuarioPorTelegramId(telegramUserId);
+    if (!usuario) {
+      await ctx.reply('⚠️ Use /start primeiro.');
+      return;
+    }
+
+    if (usuario.plan === Plan.PRO) {
+      await ctx.reply('✅ Você já é um usuário PRO!');
+      return;
+    }
+
+    if (!env.stripeProviderToken) {
+      await ctx.reply('⚠️ O sistema de pagamentos ainda não foi configurado pelo administrador.');
+      return;
+    }
+
+    const preco = 2990; // R$ 29,90 em centavos
+
+    // @ts-ignore - Telegraf types
+    await ctx.replyWithInvoice({
+      title: 'LazzyFinance PRO 💎',
+      description: 'Transações e gastos fixos ilimitados, exportação Excel e Dashboard Web.',
+      payload: `premium_${usuario.id}`,
+      provider_token: env.stripeProviderToken,
+      currency: 'BRL',
+      prices: [{ label: 'Plano Mensal', amount: preco }],
+      start_parameter: 'premium_upgrade',
+    });
+  } catch (error) {
+    console.error('Erro ao enviar fatura:', error);
+    await ctx.reply('❌ Erro ao processar pedido. Tente novamente.');
+  }
+}
+
+/**
+ * Handler para pre_checkout_query
+ */
+export async function handlePreCheckoutQuery(ctx: Context) {
+  try {
+    // @ts-ignore
+    await ctx.answerPreCheckoutQuery(true);
+  } catch (error) {
+    console.error('Erro no pre-checkout:', error);
+  }
+}
+
+/**
+ * Handler para successful_payment
+ */
+export async function handleSuccessfulPayment(ctx: Context) {
+  await ctx.reply(
+    '🎉 *Pagamento recebido com sucesso!*\n\n' +
+    'Seu plano PRO será ativado em instantes. Você receberá uma confirmação assim que o processamento for concluído no servidor.\n\n' +
+    'Obrigado por apoiar o LazzyFinance!',
+    { parse_mode: 'Markdown' }
+  );
 }
 
 /**

@@ -12,6 +12,9 @@ import {
   handleMeuFixos,
   handleEditar,
   handleTestarFixos,
+  handlePremium,
+  handlePreCheckoutQuery,
+  handleSuccessfulPayment,
   temConfirmacaoPendente,
   temGastoFixoPendente,
 } from './handlers';
@@ -28,7 +31,12 @@ export function criarBot() {
   bot.command('fixo', handleFixo);
   bot.command('meu_fixos', handleMeuFixos);
   bot.command('editar', handleEditar);
+  bot.command('premium', handlePremium);
   bot.command('testar_fixos', (ctx) => handleTestarFixos(ctx, bot));
+
+  // Handlers de Pagamento
+  bot.on('pre_checkout_query', handlePreCheckoutQuery);
+  bot.on('successful_payment', handleSuccessfulPayment);
 
   // Handler para mensagens de texto
   bot.on('text', async (ctx) => {

@@ -1,191 +1,206 @@
-# 🤖 LazzyFinance Bot
+# LazzyFinance Bot
 
-Bot Telegram em TypeScript para gerenciamento de gastos financeiros com categorização automática via IA (Ollama).
+Bot Telegram + Dashboard Web para gerenciamento financeiro pessoal com categorização automática via IA (Google Gemini 2.5 Flash).
 
-## 📋 Funcionalidades
+## Funcionalidades
 
-- ✅ Recebe descrições de gastos em texto livre (ex: "50 reais no mercado")
-- 🤖 Categoriza automaticamente usando Ollama (IA local e gratuita)
-- 💾 Salva transações no PostgreSQL
-- 📊 Gera relatórios mensais por categoria
-- ✅ Sistema de confirmação antes de salvar
+- Registro de gastos e ganhos via texto livre no Telegram (ex: "50 reais no mercado")
+- Categorização automática com Google Gemini 2.5 Flash
+- Gastos fixos recorrentes com scheduler diário e confirmação via bot
+- Relatórios mensais com agrupamento por categoria e saldo líquido
+- Exportação para Excel (.xlsx) com formatação e resumo
+- Dashboard web (React) com gráficos, tabelas e edição de transações
+- Sistema multi-usuário com isolamento completo de dados
+- Planos FREE e PRO com integração Stripe
 
-## 🚀 Tecnologias
+## Tecnologias
 
-- **TypeScript** - Linguagem principal
+### Backend
+- **TypeScript** + **Node.js**
 - **Telegraf** - Framework para bot Telegram
 - **Prisma** - ORM para PostgreSQL
-- **Ollama** - IA local para categorização
-- **PostgreSQL** - Banco de dados
+- **Express** - API REST para o dashboard
+- **Google Gemini 2.5 Flash** - IA para categorização
+- **Supabase** - Banco de dados PostgreSQL hospedado
+- **Stripe** - Pagamentos e planos premium
+- **ExcelJS** - Geração de planilhas
 
-## 📦 Pré-requisitos
+### Frontend (Dashboard)
+- **React** + **Vite**
+- **Tailwind CSS**
+- Gráficos (pizza e linhas), tabela de transações, filtro por mês
+- Autenticação via token gerado pelo bot
 
-1. **Node.js** 18+ instalado
-2. **PostgreSQL** instalado e rodando
-3. **Ollama** instalado e rodando (veja instruções abaixo)
+## Pre-requisitos
 
-## 🔧 Instalação
+1. **Node.js** 18+
+2. Conta no **Supabase** (ou PostgreSQL local)
+3. **API Key** do Google Gemini
+4. **Token** do Telegram BotFather
 
-### 1. Clone o repositório e instale dependências
+## Instalacao
+
+### 1. Instale as dependencias
 
 ```bash
 npm install
+cd web && npm install
 ```
 
-### 2. Instale e configure o Ollama
+### 2. Configure as variaveis de ambiente
 
-#### Windows/Mac/Linux:
-
-1. Baixe e instale o Ollama: https://ollama.ai/download
-2. Abra o terminal e execute:
-
-```bash
-# Baixa o modelo (recomendado: llama2 ou mistral)
-ollama pull llama2
-# ou
-ollama pull mistral
-```
-
-3. Teste se está funcionando:
-
-```bash
-ollama run llama2
-```
-
-4. Por padrão, o Ollama roda em `http://localhost:11434`
-
-### 3. Configure o banco de dados PostgreSQL
-
-Crie um banco de dados:
-
-```sql
-CREATE DATABASE lazzyfinance;
-```
-
-### 4. Configure as variáveis de ambiente
-
-Copie o arquivo de exemplo:
+Copie o arquivo de exemplo e preencha:
 
 ```bash
 cp env.local.example .env.local
 ```
 
-Edite `.env.local` com suas configurações:
-
 ```env
 TELEGRAM_BOT_TOKEN=seu_token_do_botfather
-DATABASE_URL=postgresql://usuario:senha@localhost:5432/lazzyfinance
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama2
+DATABASE_URL=postgresql://usuario:senha@host:6543/postgres?pgbouncer=true
+GEMINI_API_KEY=sua_chave_gemini_aqui
+WEB_PORT=3001
+WEB_BASE_URL=http://localhost:5173
+STRIPE_PROVIDER_TOKEN=...
+STRIPE_SECRET_KEY=...
+STRIPE_WEBHOOK_SECRET=...
 ```
 
-#### Como obter o token do Telegram:
-
-1. Abra o Telegram e procure por `@BotFather`
-2. Envie `/newbot` e siga as instruções
-3. Copie o token fornecido
-
-### 5. Execute as migrations do Prisma
+### 3. Configure o banco de dados
 
 ```bash
-# Gera o Prisma Client
 npm run db:generate
-
-# Cria as tabelas no banco
 npm run db:migrate
 ```
 
-## ▶️ Executando
+## Executando
 
-### Modo desenvolvimento (com hot-reload):
+### Backend (bot + API):
 
 ```bash
+# Desenvolvimento (hot-reload)
 npm run dev
+
+# Producao
+npm run build && npm start
 ```
 
-### Modo produção:
+### Frontend (dashboard):
 
 ```bash
-# Compila o TypeScript
-npm run build
-
-# Inicia o bot
-npm start
+npm run dev:web
 ```
 
-## 📱 Como usar
+O dashboard roda em `http://localhost:5173` e a API em `http://localhost:3001`.
 
-1. Abra o Telegram e procure pelo seu bot
-2. Envie `/start` para ver as instruções
-3. Para registrar um gasto ou lucro, envie uma mensagem como:
-   - `gasto 50 reais no mercado`
-   - `gastei 100 reais de uber hoje`
-   - `gastei 200 reais de aluguel em 01/01/2025`
-   - `ganhei 150 de um freela ontem`
-   - `lucrei 130 fazendo um uber`
-4. O bot irá categorizar e pedir confirmação
-5. Use `/relatorio agosto` para ver o relatório do mês
-6. Use `/exportar` para criar um arquivo .xlsx dos gastos
-7. função futura: `/site` acessa as informações em um site
-   
+## Comandos do Bot
 
-## 🏗️ Estrutura do projeto
+| Comando | Descricao |
+|---------|-----------|
+| `/start` | Registra o usuario e mostra instrucoes |
+| `/relatorio <mes> [ano]` | Relatorio mensal por categoria |
+| `/exportar` | Exporta transacoes do mes em .xlsx |
+| `/site` | Gera link de acesso ao dashboard web |
+| `/fixo` | Cria um gasto fixo recorrente |
+| `/meu_fixos` | Lista seus gastos fixos ativos |
+| `/editar` | Edita transacoes recentes |
+| `/premium` | Informacoes sobre o plano PRO |
+
+Mensagens em texto livre sao interpretadas como transacoes:
+- `gastei 50 reais no mercado`
+- `ganhei 1500 de salario`
+- `100 reais de uber hoje`
+- `200 reais de aluguel em 01/01/2025`
+
+## Categorias
+
+| Categoria | Exemplos |
+|-----------|----------|
+| ALIMENTACAO | Mercado, restaurante, delivery, lanche |
+| TRANSPORTE | Uber, gasolina, onibus, estacionamento |
+| LAZER | Cinema, festas, entretenimento |
+| SAUDE | Farmacia, medicos, medicamentos |
+| MORADIA | Aluguel, luz, agua, internet, condominio |
+| ESTUDOS | Cursos, livros, materiais |
+| TRABALHO | Despesas profissionais, equipamentos |
+| LUCROS | Salario, freelance, vendas, receitas |
+
+## Planos
+
+| | FREE | PRO |
+|---|------|-----|
+| Transacoes/mes | 50 | Ilimitado |
+| Gastos fixos | 3 | Ilimitado |
+| Dashboard web | Sim | Sim |
+| Exportacao Excel | Sim | Sim |
+
+## Estrutura do Projeto
 
 ```
 src/
-├── bot/
-│   ├── bot.ts          # Configuração do bot
-│   └── handlers.ts     # Handlers de comandos e mensagens
-├── config/
-│   └── env.ts          # Configuração de variáveis de ambiente
-├── database/
-│   └── client.ts       # Cliente Prisma
-├── services/
-│   ├── ollama.service.ts      # Integração com Ollama
-│   └── transaction.service.ts # Lógica de transações
-├── utils/
-│   └── dateParser.ts   # Utilitários de data
-└── index.ts            # Ponto de entrada
+  bot/
+    bot.ts                # Configuracao e rotas do bot
+    handlers.ts           # Handlers de comandos e mensagens
+  config/
+    env.ts                # Validacao de variaveis de ambiente
+  database/
+    client.ts             # Cliente Prisma (singleton)
+  scheduler/
+    recurringScheduler.ts # Scheduler diario de gastos fixos
+  server/
+    web.server.ts         # API REST Express
+  services/
+    gemini.service.ts     # Integracao com Google Gemini
+    transaction.service.ts # CRUD de transacoes
+    recurring.service.ts  # CRUD de gastos fixos
+    user.service.ts       # Gerenciamento de usuarios
+    token.service.ts      # Tokens de acesso ao dashboard
+    export.service.ts     # Geracao de Excel
+  utils/
+    dateParser.ts         # Parser de datas e formatacao
+    fileCleanup.ts        # Limpeza de arquivos temporarios
+web/
+  src/
+    components/
+      Dashboard.tsx       # Pagina principal
+      PieChart.tsx        # Grafico de pizza por categoria
+      LineChart.tsx        # Grafico de evolucao temporal
+      TransactionTable.tsx # Tabela de transacoes
+      MonthFilter.tsx     # Filtro por mes/ano
+      EditTransactionModal.tsx # Modal de edicao
+      RecurringTransactions.tsx # Lista de gastos fixos
+    services/
+      api.ts              # Cliente HTTP para a API
+prisma/
+  schema.prisma           # Schema do banco de dados
 ```
 
-## 🔍 Scripts disponíveis
+## API REST
 
-- `npm run dev` - Executa em modo desenvolvimento
-- `npm run build` - Compila o TypeScript
-- `npm start` - Executa em produção
-- `npm run db:migrate` - Executa migrations
-- `npm run db:generate` - Gera Prisma Client
-- `npm run db:studio` - Abre Prisma Studio (interface gráfica do banco)
+Todas as rotas (exceto health) requerem autenticacao via `Authorization: Bearer <token>`.
 
-## 📝 Categorias disponíveis
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/health` | Health check |
+| GET | `/api/auth/validate` | Valida token |
+| GET | `/api/transactions` | Transacoes do mes (query: mes, ano) |
+| GET | `/api/transactions/all` | Todas as transacoes |
+| PUT | `/api/transactions/:id` | Atualiza transacao |
+| DELETE | `/api/transactions/:id` | Deleta transacao |
+| GET | `/api/stats` | Estatisticas do mes |
+| GET | `/api/recurring` | Gastos fixos |
+| POST | `/api/webhooks/stripe` | Webhook do Stripe |
 
-- **TRANSPORTE** - Uber, táxi, gasolina, ônibus, etc.
-- **LAZER** - Cinema, restaurantes, festas, etc.
-- **SAUDE** - Médicos, farmácia, medicamentos, etc.
-- **MORADIA** - Aluguel, contas, luz, água, etc.
-- **ESTUDOS** - Cursos, livros, materiais, etc.
-- **LUCROS** - Receitas, vendas, salário, etc.
+## Scripts
 
-## 🐛 Troubleshooting
-
-### Ollama não está respondendo
-
-Verifique se o Ollama está rodando:
 ```bash
-ollama list
+npm run dev          # Backend com hot-reload
+npm run dev:web      # Frontend com Vite
+npm run build        # Compila TypeScript (backend)
+npm run build:web    # Build do frontend
+npm start            # Executa backend compilado
+npm run db:generate  # Gera Prisma Client
+npm run db:migrate   # Executa migrations
+npm run db:studio    # Abre Prisma Studio
+npm run db:push      # Sincroniza schema sem migration
 ```
-
-Se não estiver, inicie:
-```bash
-ollama serve
-```
-
-### Erro de conexão com PostgreSQL
-
-Verifique se o PostgreSQL está rodando e se as credenciais no `.env.local` estão corretas.
-
-### Bot não responde
-
-1. Verifique se o token do Telegram está correto
-2. Confira os logs no console
-3. Verifique se o bot foi iniciado corretamente com `/start`
